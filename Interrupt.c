@@ -10,7 +10,6 @@
  *      UART interrupts.
  */
 
-#include "MessagePassing.h"
 #include "Interrupt.h"
 #include "messaging.h"
 
@@ -54,13 +53,13 @@ void UART_PutChar(char data)
 void UART0_IntHandler(void)
 {
     char data;
-    enum Sender src;
+    unsigned src;
 
     if (UART0_MIS_R & UART_INT_RX)
     {
         // RECV done - clear interrupt and make char available to application
         UART0_ICR_R |= UART_INT_RX;
-        SendMessage(UART0_DR_R, UART0_TX, MONITOR_RX);
+//        SendMessage(UART0_DR_R, UART0_TX, MONITOR_RX);
     }
 
     if (UART0_MIS_R & UART_INT_TX)
@@ -68,7 +67,7 @@ void UART0_IntHandler(void)
         // XMIT done - clear interrupt
         UART0_ICR_R |= UART_INT_TX;
         // Check if anymore chars in output queue
-        if(ReceiveMessage(&data,&src,UART0_RX)) {
+        if( k_recv(UART0_RX, &src, &data, sizeof(data)) ) {
             // chars waiting so send through uart
             UART0_DR_R = data;
         }

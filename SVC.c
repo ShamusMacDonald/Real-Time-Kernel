@@ -150,7 +150,14 @@ void SVCHandler(struct StackFrame *p_procstk)
             break;
 
         case BIND:
+            break;
 
+        case SEND:
+            p_kernargs->rtnval = k_send(p_kernargs->arg3               // dst
+                                      , g_running[g_priority]->mqid    // src
+                                      , (void *)p_kernargs->arg1       // data
+                                      , p_kernargs->arg2 );            // size
+            break;
 
         default:
             p_kernargs->rtnval = BADCODE;

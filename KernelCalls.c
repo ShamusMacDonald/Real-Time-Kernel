@@ -52,7 +52,26 @@ uint32_t t_getpid(void)
     return getid_arg.rtnval;
 }
 
-//uint32_t f_tkcall()
+int t_send(unsigned dst, const void *data, unsigned size)
+{
+    volatile struct KernelCallArgs send_args;
+
+    send_args.code = SEND;
+    send_args.arg1 = (unsigned)data;
+    send_args.arg2 = size;
+    send_args.arg3 = dst;
+
+    // Set R7 to address of kernel argument
+    f_setR7( (uint32_t)&send_args );
+
+    // Call kernel
+    SVC();
+
+    return send_args.rtnval;
+
+}
+
+//int t_recv()
 
 void f_setR7(volatile uint32_t data)
 {

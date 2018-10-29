@@ -56,7 +56,7 @@ void k_bind(struct KernelCallArgs *args)
  * If the destination is the monitor, then the message will be queued in  *
  * the InQ.                                                               *
  * Returns 1 if message queued successfully or returns 0 if queue full    */
-int k_send(uint16_t dst, uint16_t src, const void *data, uint8_t size)
+int k_send(unsigned dst, unsigned src, const void *data, unsigned size)
 {
     struct msg msg = {.src = src, .size = size};
 
@@ -95,7 +95,7 @@ int k_send(uint16_t dst, uint16_t src, const void *data, uint8_t size)
  * appropriate queue. If the receiver is UART, it removes the data from the  *
  * OutQ, else it removes from the InQ.                                       *
  * Returns 0 if the Q is empty, returns 1 if message received.               */
-int k_recv(uint16_t dst, uint16_t *src, void *data, uint8_t size)
+int k_recv(unsigned dst, unsigned *src, void *data, unsigned size)
 {
     // if q empty return 0
     if(mq_list[dst].size == 0) {
@@ -131,7 +131,7 @@ void init_msg(void)
 
     // bind UART0 to mqid 0
     mq_list[UART0_RX].avail = FALSE;
-    mq_list[UART0_RX].capacity = QSIZE;
+    mq_list[UART0_RX].capacity = QSZ;
     mq_list[UART0_RX].head=0;
     mq_list[UART0_RX].tail=0;
     mq_list[UART0_RX].size=0;
@@ -139,7 +139,7 @@ void init_msg(void)
     // initialize each mq_list
     for(i = 1; i < MAX_MQ; i++) {
         mq_list[i].avail = TRUE;
-        mq_list[i].capacity = QSIZE;
+        mq_list[i].capacity = QSZ;
         mq_list[i].head=0;
         mq_list[i].tail=0;
         mq_list[i].size=0;

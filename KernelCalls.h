@@ -18,19 +18,21 @@
 
 #define PRIVATE static
 
-enum KernelCallCodes {GETID, NICE, KILL, BIND, BADCODE};
+enum KernelCallCodes {GETID, NICE, KILL, BIND, SEND, RECV, BADCODE};
 
 struct KernelCallArgs
 {
-    unsigned int code;
-    unsigned int rtnval;
-    unsigned int arg1;
-    unsigned int arg2;
+    unsigned code;
+    unsigned rtnval;
+    unsigned arg1;
+    unsigned arg2;
+    unsigned arg3;
 };
 
 // Kernel Calls
 uint32_t t_getpid(void);
 void t_kill(void);
+int t_send(unsigned, const void *, unsigned);
 
 // Support Functions
 void f_setR7(volatile uint32_t);

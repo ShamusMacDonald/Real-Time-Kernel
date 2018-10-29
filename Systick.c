@@ -11,7 +11,6 @@
  */
 
 #include "Systick.h"
-#include "MessagePassing.h"
 #include "process.h"
 
 /************************************************************

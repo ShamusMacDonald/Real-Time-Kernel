@@ -9,7 +9,9 @@
 #include <string.h>
 
 #include "process.h"
-#include "MessagePassing.h"
+#include "KernelCalls.h"
+//#include "MessagePassing.h"
+#define UART0_RX 0
 
 // process termination function
 extern void t_kill(void);
@@ -154,7 +156,8 @@ void print_str(char *str)
  * passed to the function.                              */
 void print_ch(char ch)
 {
-    SendMessage(ch,MONITOR_TX,UART0_RX);
+    t_send(UART0_RX, &ch, sizeof(ch));
+    //SendMessage(ch,MONITOR_TX,UART0_RX);
 }
 
 void print_list(void)

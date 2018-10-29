@@ -19,7 +19,6 @@
 
 #include <stdint.h>
 
-#include "MessagePassing.h"
 #include "process.h"
 #include "KernelCalls.h"
 
