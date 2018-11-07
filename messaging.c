@@ -8,6 +8,13 @@
  *
  */
 
+/* TODO:
+ * 1. Add recv blocking
+ * 2. - Change malloc & free to static version
+ *    - memcpy is okay
+ *
+ */
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -17,7 +24,7 @@
 #include "Interrupt.h"
 #include "process.h"
 
-#define MAX_MQ  16
+#define MAX_MQ  32
 #define ERROR   -1
 
 #define FALSE   0
@@ -35,17 +42,25 @@ extern uint32_t g_priority;
 // Signals that the UART can transmit
 extern volatile unsigned UART_IDLE;
 
-void k_bind(struct KernelCallArgs *args)
+int k_bind(int qid, int istask)
 {
-    // verify user desired msg_q is available
-    if(( args->arg1 < MAX_MQ ) && mq_list[args->arg1].avail) {
-        // bind to msg_q and return mqid to user
-        mq_list[args->arg1].avail = FALSE;
-        g_running[g_priority]->mqid = args->arg1;
-        args->rtnval = args->arg1;
+    // verify user desired msg_q is a valid id and available
+    if( ( qid >= 0 ) && ( qid < MAX_MQ ) && mq_list[qid].avail) {
+
+        // bind to msg_q and return qid to user
+        mq_list[qid].avail = FALSE;
+
+        /* If a task is requesting a msgq, update the qid in the
+         * tasks tcb
+         */
+        if(istask) {
+            g_running[g_priority]->mqid = qid;
+        }
+
+        return qid;
     }
     else {
-        args->rtnval = ERROR;
+        return ERROR;
     }
 }
 
@@ -56,11 +71,16 @@ void k_bind(struct KernelCallArgs *args)
  * If the destination is the monitor, then the message will be queued in  *
  * the InQ.                                                               *
  * Returns 1 if message queued successfully or returns 0 if queue full    */
-int k_send(unsigned dst, unsigned src, const void *data, unsigned size)
+int k_send(int dst, int src, const void *data, unsigned size)
 {
     struct msg msg = {.src = src, .size = size};
 
-    if( (dst == UART0_RX) && (size > sizeof(char)) ) {
+    /* Verify uart is only receiving chars
+     * & that the src and dst are bound to queues
+     */
+
+    if( ((dst == UART0_RX) && (size > sizeof(char)))
+        || (src < 0) || mq_list[dst].avail ) {
         return 0;
     }
 
@@ -125,25 +145,25 @@ void init_msg(void)
 {
     unsigned i;
 
-    // initialize UART serial comm
-    InitTerminal();
-    InterruptMasterEnable();
-
     // bind UART0 to mqid 0
+    /*
     mq_list[UART0_RX].avail = FALSE;
     mq_list[UART0_RX].capacity = QSZ;
     mq_list[UART0_RX].head=0;
     mq_list[UART0_RX].tail=0;
     mq_list[UART0_RX].size=0;
-
+    */
     // initialize each mq_list
-    for(i = 1; i < MAX_MQ; i++) {
+    for(i = 0; i < MAX_MQ; i++) {
         mq_list[i].avail = TRUE;
         mq_list[i].capacity = QSZ;
         mq_list[i].head=0;
         mq_list[i].tail=0;
         mq_list[i].size=0;
     }
+    // initialize UART serial comm
+    InitTerminal();
+    InterruptMasterEnable();
 }
 
 /*

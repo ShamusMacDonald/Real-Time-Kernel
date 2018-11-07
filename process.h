@@ -70,7 +70,7 @@ struct PCB {
 	uint32_t psp;
 	uint32_t pid;
 	uint32_t priority;
-	uint32_t mqid;
+	int mqid;
 
 	/* Top of the entire process stack
 	 * Used for freeing the process stack

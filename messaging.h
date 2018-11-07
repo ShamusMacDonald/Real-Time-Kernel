@@ -38,8 +38,8 @@ struct msg_q {
 };
 
 void init_msg(void);
-void k_bind(struct KernelCallArgs *);
-int k_send(unsigned, unsigned, const void *, unsigned);
+int k_bind(int, int);
+int k_send(int, int, const void *, unsigned);
 int k_recv(unsigned, unsigned *, void *, unsigned);
 
 #endif /* MESSAGING_H_ */

@@ -12,6 +12,7 @@
 #include "KernelCalls.h"
 //#include "MessagePassing.h"
 #define UART0_RX 0
+#define UNBOUND  -1
 
 // process termination function
 extern void t_kill(void);
@@ -43,6 +44,7 @@ void reg_proc(void (*func)(), uint32_t id, uint32_t pri)
 	// Set New PCB attributes
 	p_pcb->pid = id;
 	p_pcb->psp = (uint32_t)p_stkptr;
+	p_pcb->mqid = UNBOUND;
 	p_pcb->priority = pri;
 	p_pcb->p_stktop = p_stktop;
 
@@ -157,7 +159,6 @@ void print_str(char *str)
 void print_ch(char ch)
 {
     t_send(UART0_RX, &ch, sizeof(ch));
-    //SendMessage(ch,MONITOR_TX,UART0_RX);
 }
 
 void print_list(void)

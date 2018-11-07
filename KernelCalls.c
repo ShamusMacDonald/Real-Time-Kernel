@@ -15,6 +15,43 @@
 #include "KernelCalls.h"
 #include "process.h"
 
+/* TODO:
+ * - Add pkcall functionality
+ */
+
+int t_getpr(void)
+{
+    // Setup arguments for kernel on process stack
+   volatile struct KernelCallArgs getpr_arg;
+
+   getpr_arg.code = GETPR;
+
+   // Set R7 to address of kernel argument
+   f_setR7( (uint32_t)&getpr_arg );
+
+   // Call kernel
+   SVC();
+
+   // Kernel sets return value
+   return getpr_arg.rtnval;
+}
+
+int t_bind(int qid)
+{
+    // Setup arguments for kernel on process stack
+    volatile struct KernelCallArgs bind_arg;
+
+    bind_arg.code = BIND;
+    bind_arg.arg1 = qid;
+
+    // Set R7 to address of kernel argument
+    f_setR7( (uint32_t)&bind_arg );
+
+    // Call kernel
+    SVC();
+
+    return bind_arg.rtnval;
+}
 
 /* t_kill is responsible for setting up the
  * necessary arguments for a kernel call via SVC

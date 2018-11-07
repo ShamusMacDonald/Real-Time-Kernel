@@ -29,6 +29,9 @@ void InitTerminal(void)
     UART0_Init();                               // Initialize UART0
     InterruptEnable(INT_VEC_UART0);             // Enable UART0 interrupts
     UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
+
+    // bind to mq 0
+    k_bind(UART0_RX, FALSE);
 }
 
 // InterruptMasterEnable call to enable interrupts

@@ -27,6 +27,7 @@ void SVCHandler(struct StackFrame *);
 
 // Forward declared kernel funcs
 PRIVATE void k_kill(void);
+PRIVATE int k_getpr(void);
 
 // User defined clock initialization
 extern void InitClock(void);
@@ -150,6 +151,7 @@ void SVCHandler(struct StackFrame *p_procstk)
             break;
 
         case BIND:
+            p_kernargs->rtnval = k_bind(p_kernargs->arg1,TRUE);
             break;
 
         case SEND:
@@ -159,12 +161,18 @@ void SVCHandler(struct StackFrame *p_procstk)
                                       , p_kernargs->arg2 );            // size
             break;
 
+        case GETPR:
+            p_kernargs->rtnval = k_getpr();
+            break;
+
         default:
             p_kernargs->rtnval = BADCODE;
+            break;
         }
     }
 
 }
+
 /* k_kill is the privileged function responsible for
  * killing (terminating) the running process. This requires
  * freeing the tasks allocated stack, adjusting the running
@@ -188,7 +196,9 @@ void k_kill(void)
 
         // Decrement priority level until we find a non-empty queue
         do {
+
             g_priority--;
+
         } while(g_running[g_priority] == NULL);
     }
     else {
@@ -208,6 +218,12 @@ void k_kill(void)
     // Load new psp
     set_psp(g_running[g_priority]->psp);
     // Return to SVCall restores state
+
+}
+
+int k_getpr(void)
+{
+    return g_running[g_priority]->priority;
 
 }
 

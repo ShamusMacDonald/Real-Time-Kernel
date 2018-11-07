@@ -18,6 +18,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "process.h"
 #include "KernelCalls.h"
@@ -26,33 +27,47 @@
 
 void print_a(void)
 {
-    int i;
-    char id;
+    static int sqid = 15;
+    int i, id, qid, pr;
+    char buf[48];
 
-    print_list();
+    qid = t_bind(sqid++);
 
     while(1) {
         for(i=0; i<COUNT_TM;i++) ;
-        id = t_getpid() + '0';
-        print_ch('\n');
-        print_ch(id);
-        print_ch('\n');
+
+        id = t_getpid();
+        pr = t_getpr();
+
+        snprintf(buf,48,"\nid: %u\n"
+                 "qid: %u\n"
+                 "pr: %u\n", id, qid, pr);
+        print_str(buf);
+
         t_kill();
     }
 }
 
 void print_b(void)
 {
-    int i;
-    char id;
+    static int sqid = 3;
     static unsigned count;
+    int i, id, qid, pr;
+    char buf[32];
+
+    qid = t_bind(sqid++);
 
     while(1) {
         for(i=0; i<COUNT_TM;i++) ;
-        id = t_getpid() + '0';
-        print_ch('\n');
-        print_ch(id);
-        print_ch('\n');
+
+        id = t_getpid(); //+ '0';
+        pr = t_getpr();
+
+        snprintf(buf,32,"\nid: %u\n"
+                 "qid: %u\n"
+                 "pr: %u\n", id, qid, pr);
+
+        print_str(buf);
 
         if(count++ >= 10) {
             break;
@@ -62,14 +77,23 @@ void print_b(void)
 
 void print_c(void)
 {
-    int i;
-    char id;
+    static int sqid = 8;
+    int i, id, pr, qid;
+    char buf[32];
+
+    qid = t_bind(sqid++);
+
     while(1) {
         for(i=0; i<COUNT_TM;i++) ;
-        id = t_getpid() + '0';
-        print_ch('\n');
-        print_ch(id);
-        print_ch('\n');
+        id = t_getpid(); //+ '0';
+        pr = t_getpr();
+
+        snprintf(buf,32,"\nid: %u\n"
+                 "qid: %u\n"
+                 "pr: %u\n", id, qid, pr);
+
+        print_str(buf);
+
         break;
     }
 }
@@ -79,6 +103,8 @@ void idle_task(void)
     int i;
     char spinner[]={'/','-','\\','|'};
     unsigned index = 0;
+
+    t_bind(1);
 
     while(1) {
 
@@ -93,9 +119,6 @@ void idle_task(void)
 
 int main(void)
 {
-
-//    InitMsgPassing();
-
     // name, id, priority
     reg_proc(idle_task,0,0);
     reg_proc(print_a,1,5);
@@ -104,14 +127,8 @@ int main(void)
     reg_proc(print_c,4,1);
     reg_proc(print_b,5,2);
 
-//    print_list();
-
     // Initialize thread mode and start first process
     SVC();
-
-    while(1) {
-
-    }
 
 	return 0;
 }
