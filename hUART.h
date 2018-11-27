@@ -1,5 +1,5 @@
 /*
- * Interrupt.h
+ * hUART.h
  *
  *  Created on: Sep 12, 2018
  *  Author:     Shamus MacDonald
@@ -7,8 +7,8 @@
  *  UART interrupts.
  */
 
-#ifndef INTERRUPT_H_
-#define INTERRUPT_H_
+#ifndef HUART_H_
+#define HUART_H_
 
 #define PRIVATE static
 

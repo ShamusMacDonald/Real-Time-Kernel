@@ -1,5 +1,4 @@
 
-
 /* main.c
  * 
  * Coding style used throughout this project
@@ -8,10 +7,13 @@
  *			Pointers: 	p_snake_case
  *			Globals:	g_snake_case
  *		Functions:
- *			Public:		snake_case( args )
+ *			Public:		snake_case(args)
  *			Private:	f_snake_case(args)
+ *		file:
+*           task space:     tFileName
+*           kernel space:   kFileName
+*           tk interface:   tkFileName
  *		Other:
-			Structs:	camelCase		
  *			Typedef:	snake_case_t
  *			defines:	UPPER_SNAKE_CASE
  *			enums:		UPPER_SNAKE_CASE 
@@ -20,112 +22,57 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "process.h"
-#include "KernelCalls.h"
+#include "kTask.h"
+#include "kPendSV.h"
+#include "tkCalls.h"
+#include "tPrint.h"
+#include "tApp.h"
 
-#define COUNT_TM    0x0186A00
-
-void print_a(void)
-{
-    static int sqid = 15;
-    int i, id, qid, pr;
-    char buf[48];
-
-    qid = t_bind(sqid++);
-
-    while(1) {
-        for(i=0; i<COUNT_TM;i++) ;
-
-        id = t_getpid();
-        pr = t_getpr();
-
-        snprintf(buf,48,"\nid: %u\n"
-                 "qid: %u\n"
-                 "pr: %u\n", id, qid, pr);
-        print_str(buf);
-
-        t_kill();
-    }
-}
-
-void print_b(void)
-{
-    static int sqid = 3;
-    static unsigned count;
-    int i, id, qid, pr;
-    char buf[32];
-
-    qid = t_bind(sqid++);
-
-    while(1) {
-        for(i=0; i<COUNT_TM;i++) ;
-
-        id = t_getpid(); //+ '0';
-        pr = t_getpr();
-
-        snprintf(buf,32,"\nid: %u\n"
-                 "qid: %u\n"
-                 "pr: %u\n", id, qid, pr);
-
-        print_str(buf);
-
-        if(count++ >= 10) {
-            break;
-        }
-    }
-}
-
-void print_c(void)
-{
-    static int sqid = 8;
-    int i, id, pr, qid;
-    char buf[32];
-
-    qid = t_bind(sqid++);
-
-    while(1) {
-        for(i=0; i<COUNT_TM;i++) ;
-        id = t_getpid(); //+ '0';
-        pr = t_getpr();
-
-        snprintf(buf,32,"\nid: %u\n"
-                 "qid: %u\n"
-                 "pr: %u\n", id, qid, pr);
-
-        print_str(buf);
-
-        break;
-    }
-}
+#define ROW_1   1
+#define COL_80  80
 
 void idle_task(void)
 {
     int i;
-    char spinner[]={'/','-','\\','|'};
+    const char spinner[]={'|','/','-','\\'};
     unsigned index = 0;
 
     t_bind(1);
 
     while(1) {
 
-        for(i=0; i < COUNT_TM/2; i++) ;
+        for(i=0; i < COUNT_TM/8; i++) {
+            ;
+        }
 
-        print_ch(spinner[index]);
-        print_ch('\b');
+        t_printcup(spinner[index], ROW_1, COL_80);
 
-        index = (index + 1) % 4;
+       index = (index + 1) % sizeof(spinner);
     }
 }
 
+#define TX_RX 0
+//#define REG_TEST 0
+
 int main(void)
 {
-    // name, id, priority
-    reg_proc(idle_task,0,0);
-    reg_proc(print_a,1,5);
-    reg_proc(print_b,2,4);
-    reg_proc(print_c,3,3);
-    reg_proc(print_c,4,1);
-    reg_proc(print_b,5,2);
+
+    //       name,      id, priority
+    reg_task(idle_task, 0,  0);
+
+    #ifdef REG_TEST
+    //       name,      id, priority
+    reg_task(task1,     5,  5);
+    reg_task(task2,     10, 5);
+    reg_task(task3,     15, 5);
+    #endif
+
+    #ifdef TX_RX
+    //       name,      id, priority
+    reg_task(task4, 20, 1);     // sender
+    reg_task(task5, 25, 5);     // receiver
+    #endif
+
 
     // Initialize thread mode and start first process
     SVC();

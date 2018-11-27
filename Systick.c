@@ -11,21 +11,22 @@
  */
 
 #include "Systick.h"
-#include "process.h"
+#include "kTask.h"
+#include "kPendSV.h"
 
 /************************************************************
 ************************ ENTRY POINTS ***********************
 *************************************************************/
 
-extern struct PCB *g_running[PRI_LVLS];
-extern uint32_t g_priority;
+extern struct TCB *g_running[PRI_LVLS];
+extern unsigned g_priority;
 
 /* InitClock is the entry point to initializing the system timer.    *
  * Call to enable systick interrupts every 1/10th second.            */
 void InitClock(void)
 {
     // Initialize SYSTICK
-    SysTickPeriod(ONE_SECOND);
+    SysTickPeriod(HUNDREDTH_SEC);
     SysTickIntEnable();
     SysTickStart();
 }
@@ -37,19 +38,8 @@ void InitClock(void)
  * process.h.                                                        */
 void SysTickHandler(void)
 {
-    // Save R4 - R11 on process stack
-    save_registers();
 
-    // Update current PCB psp
-    g_running[g_priority]->psp = get_psp();
-
-    // Move to next pcb
-    g_running[g_priority] = g_running[g_priority]->next;
-    // Set CPU psp
-    set_psp(g_running[g_priority]->psp);
-
-    // Load PCB state
-    restore_registers();
+    NVIC_INT_CTRL_R |= TRIGGER_PENDSV;
 
 }
 

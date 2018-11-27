@@ -1,30 +1,32 @@
 /*
- * process.c
+ * kTask.c
  *
  *  Created on: Oct 13, 2018
  *      Author: Shamus MacDonald
  */
 #include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 
-#include "process.h"
-#include "KernelCalls.h"
-//#include "MessagePassing.h"
-#define UART0_RX 0
+#include "kTask.h"
+#include "tkCalls.h"
+
+#define UART0_QID 0
 #define UNBOUND  -1
+#define TRUE    1
+#define FALSE   0
+
+#define BUF_SZ  10
 
 // process termination function
 extern void t_kill(void);
 
-struct PCB *g_running[PRI_LVLS] = { NULL };
-uint32_t g_priority = 0;
+struct TCB *g_running[PRI_LVLS] = { NULL };
+unsigned g_priority = 0;
 
-void reg_proc(void (*func)(), uint32_t id, uint32_t pri)
+void reg_task(void (*func)(), uint32_t id, uint32_t pri)
 { 
 	uint32_t *p_stktop;
 	struct StackFrame *p_stkptr;
-	struct PCB *p_pcb;
+	struct TCB *p_tcb;
 	 
 	// Get 32bit wide stack of size STACK_SIZE	
 	p_stktop = (uint32_t *)malloc(STACK_SIZE * sizeof(uint32_t));
@@ -39,18 +41,19 @@ void reg_proc(void (*func)(), uint32_t id, uint32_t pri)
 	p_stkptr->lr = (uint32_t)t_kill;
 
 	// Create a new Process Control Block
-	p_pcb = (struct PCB *)malloc(sizeof(struct PCB));
+	p_tcb = (struct TCB *)malloc(sizeof(struct TCB));
 	
-	// Set New PCB attributes
-	p_pcb->pid = id;
-	p_pcb->psp = (uint32_t)p_stkptr;
-	p_pcb->mqid = UNBOUND;
-	p_pcb->priority = pri;
-	p_pcb->p_stktop = p_stktop;
+	// Set New TCB attributes
+	p_tcb->pid = id;
+	p_tcb->psp = (uint32_t)p_stkptr;
+	p_tcb->mqid = UNBOUND;
+	p_tcb->priority = pri;
+	p_tcb->p_stktop = p_stktop;
+	p_tcb->blocked = FALSE;
 
-	/* Add new pcb to linked list
+	/* Add new tcb to linked list
 	 * If first time called (running NULL)
-	 * Then new pcb must be linked to itself
+	 * Then new tcb must be linked to itself
 	 * To initialize the linked list
 	 */
 
@@ -61,7 +64,7 @@ void reg_proc(void (*func)(), uint32_t id, uint32_t pri)
 
 	if(g_running[pri] == NULL) {
 
-        g_running[pri] = p_pcb;
+        g_running[pri] = p_tcb;
         g_running[pri]->next = g_running[pri];
         g_running[pri]->prev = g_running[pri];
 
@@ -69,19 +72,19 @@ void reg_proc(void (*func)(), uint32_t id, uint32_t pri)
     else {
 
         // Add to linked list
-        p_pcb->next = g_running[pri]->next;
+        p_tcb->next = g_running[pri]->next;
 
-        p_pcb->prev = g_running[pri];
-        p_pcb->next->prev = p_pcb;
+        p_tcb->prev = g_running[pri];
+        p_tcb->next->prev = p_tcb;
 
-        g_running[pri]->next = p_pcb;
-        g_running[pri] = p_pcb;
+        g_running[pri]->next = p_tcb;
+        g_running[pri] = p_tcb;
 
     }
 
 }
 
-uint32_t get_psp(void)
+unsigned get_psp(void)
 {
     /* Returns contents of PSP (current process stack */
     __asm(" mrs     r0, psp");
@@ -90,7 +93,7 @@ uint32_t get_psp(void)
                 /***** If used, will clobber 'r0' */
 }
 
-uint32_t get_msp(void)
+unsigned get_msp(void)
 {
     /* Returns contents of MSP (main stack) */
     __asm(" mrs     r0, msp");
@@ -98,19 +101,19 @@ uint32_t get_msp(void)
     return 0;
 }
 
-void set_psp(volatile uint32_t ProcessStack)
+void set_psp(volatile unsigned ProcessStack)
 {
     /* set PSP to ProcessStack */
     __asm(" msr psp, r0");
 }
 
-void set_msp(volatile uint32_t MainStack)
+void set_msp(volatile unsigned MainStack)
 {
     /* Set MSP to MainStack */
     __asm(" msr msp, r0");
 }
 
-void set_lr(volatile uint32_t lr)
+void set_lr(volatile unsigned lr)
 {
     /* Set Link Reg as process return addr
      * Should be a func to kill the proc
@@ -136,57 +139,11 @@ void volatile restore_registers()
     __asm(" msr psp,r0");
 }
 
-uint32_t get_sp()
+unsigned get_sp()
 {
     /**** Leading space required -- for label ****/
     __asm("     mov     r0,SP");
     __asm(" bx  lr");
     return 0;
-}
-
-// PrintString calls PrintChar for each char in the string
-void print_str(char *str)
-{
-    int i = 0;
-    while( i < strlen(str) ) {
-        print_ch(str[i]);
-        i++;
-    }
-}
-
-/* PrintChar sends a message to the UART with the data  *
- * passed to the function.                              */
-void print_ch(char ch)
-{
-    t_send(UART0_RX, &ch, sizeof(ch));
-}
-
-void print_list(void)
-{
-    unsigned pri;
-    struct PCB *p_pcb;
-    char pid_ch;
-	
-	print_str("\nStart:\n");
-
-	for(pri = 0; pri < PRI_LVLS; pri++) {
-
-	    if(g_running[pri] != NULL) {
-
-            p_pcb = g_running[pri];
-
-            do {
-
-                pid_ch = (char)(p_pcb->pid + '0');
-
-                print_str("\nID: ");
-                print_ch(pid_ch);
-                print_ch('\n');
-
-                p_pcb = p_pcb->prev;
-
-            } while(p_pcb->pid != g_running[pri]->pid);
-        }
-	}
 }
 

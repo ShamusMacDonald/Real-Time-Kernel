@@ -1,5 +1,5 @@
 /*
- *  Interrupt.c
+ *  hUART.c
  *
  *  Created on: Sep 11, 2018
  *      Author: Shamus MacDonald
@@ -10,13 +10,20 @@
  *      UART interrupts.
  */
 
-#include "Interrupt.h"
-#include "messaging.h"
+#include <stdint.h>
+
+#include "hUART.h"
+#include "kMessaging.h"
+#include "kTask.h"
 
 #define FALSE   0
 #define TRUE    1
 
 volatile unsigned UART_IDLE = TRUE;
+
+// Currently running process
+extern struct TCB *g_running[PRI_LVLS];
+extern unsigned g_priority;
 
 /************************************************************
 ************************ ENTRY POINTS ***********************
@@ -39,6 +46,7 @@ void InterruptMasterEnable(void)
 {
     // enable CPU interrupts
     __asm(" cpsie   i");
+
 }
 
 /* UART_PutChar is the entry point for the message passing software  *
@@ -58,17 +66,29 @@ void UART0_IntHandler(void)
     char data;
     unsigned src;
 
+    // Save R4 - R11 on process stack
+    save_registers();
+
+    // Update current TCB psp
+    g_running[g_priority]->psp = get_psp();
+
+
     if (UART0_MIS_R & UART_INT_RX)
     {
         // RECV done - clear interrupt and make char available to application
         UART0_ICR_R |= UART_INT_RX;
-//        SendMessage(UART0_DR_R, UART0_TX, MONITOR_RX);
+
+        data = UART0_DR_R;
+
+        k_send(5, UART0_RX, &data, sizeof(data));
+
     }
 
     if (UART0_MIS_R & UART_INT_TX)
     {
         // XMIT done - clear interrupt
         UART0_ICR_R |= UART_INT_TX;
+
         // Check if anymore chars in output queue
         if( k_recv(UART0_RX, &src, &data, sizeof(data)) ) {
             // chars waiting so send through uart
@@ -79,6 +99,14 @@ void UART0_IntHandler(void)
             UART_IDLE = TRUE;
         }
     }
+
+    // restore state
+    // Set CPU psp
+    set_psp(g_running[g_priority]->psp);
+
+    // Load TCB state
+    restore_registers();
+
 }
 
 /************************************************************

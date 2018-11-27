@@ -1,5 +1,5 @@
 /*
- *  KernelCalls.h
+ *  tkCalls.h
  *
  *  Created on: Oct 16, 2018
  *      Author: Shamus MacDonald
@@ -11,30 +11,52 @@
  *      subsequent calls are from processes during execution.
  */
 
-#ifndef KERNELCALLS_H_
-#define KERNELCALLS_H_
+#ifndef TKCALLS_H_
+#define TKCALLS_H_
 
 #include <stdint.h>
 
 #define PRIVATE static
 
-enum KernelCallCodes {GETID, NICE, KILL, BIND, SEND, RECV, GETPR, BADCODE};
+enum KernelCallCodes {GETID, NICE, KILL, BIND, SEND,
+                      RECV, GETPR, PRINT_CUP , BADCODE};
 
 struct KernelCallArgs
 {
     unsigned code;
     unsigned rtnval;
-    unsigned arg1;
-    unsigned arg2;
-    unsigned arg3;
+    void *args;
+};
+
+struct tkmsg
+{
+    void *data;
+    unsigned size;
+
+    /* node can be a dst or src
+     * so struct can be used by both
+     * recv and send
+     */
+    unsigned node;
+};
+
+struct PrintCup
+{
+    unsigned row;
+    unsigned col;
+    char data;
 };
 
 // Kernel Calls
-uint32_t t_getpid(void);
+unsigned t_getpid(void);
 void t_kill(void);
-int t_send(unsigned, const void *, unsigned);
+int t_send(unsigned, void *, unsigned);
+int t_recv(unsigned *, void *, unsigned);
 int t_bind(int);
 int t_getpr(void);
+int t_nice(int);
+int t_printcup(char, unsigned, unsigned);
+int tkcall(int, void *);
 
 // Support Functions
 void f_setR7(volatile uint32_t);

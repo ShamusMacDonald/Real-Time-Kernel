@@ -1,18 +1,14 @@
 /*
- * messaging.h
+ * kMessaging.h
  *
  *  Created on: Oct 29, 2018
  *      Author: Shamus MacDonald
- *      Description:
  */
 
-#ifndef MESSAGING_H_
-#define MESSAGING_H_
+#ifndef KMESSAGING_H_
+#define KMESSAGING_H_
 
-#include <stdint.h>
-#include "KernelCalls.h"
-
-#define QSZ   8
+#define QSZ   64
 
 /* Each Message contains  info identifying the sender (from)
  * the size of the data, and the data being sent.
@@ -29,17 +25,21 @@ struct msg {
  * for received messages.
  */
 struct msg_q {
+
     struct msg fifo[QSZ];
+    struct TCB *owner;
     unsigned capacity;
     unsigned size;
     unsigned head;
     unsigned tail;
     unsigned avail;
+
 };
 
 void init_msg(void);
 int k_bind(int, int);
 int k_send(int, int, const void *, unsigned);
 int k_recv(unsigned, unsigned *, void *, unsigned);
+int k_printcup(char, unsigned, unsigned);
 
 #endif /* MESSAGING_H_ */

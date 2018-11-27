@@ -1,12 +1,12 @@
 /*
- * process.h
+ *  kTask.h
  *
  *  Created on: Oct 13, 2018
  *      Author: Shamus MacDonald
  */
 
-#ifndef PROCESS_H_
-#define PROCESS_H_
+#ifndef KTASK_H_
+#define KTASK_H_
 
 #include <stdint.h>
 
@@ -22,19 +22,17 @@
 #define PRI_LVLS       6
 
 #define SVC()       __asm(" SVC #0")
-#define disable()   __asm(" cpsid i")
-#define enable()    __asm(" cpsie i")
 
-#define MSP_RETURN  0xFFFFFFF9    // LR value: exception return using MSP as SP
-#define PSP_RETURN  0xFFFFFFFD    // LR value: exception return using PSP as SP
+//#define MSP_RETURN  0xFFFFFFF9    // LR value: exception return using MSP as SP
+//#define PSP_RETURN  0xFFFFFFFD    // LR value: exception return using PSP as SP
 
-void set_lr(volatile uint32_t);
+void set_lr(volatile unsigned);
 
-uint32_t get_psp(void);
-void set_psp(volatile uint32_t);
-uint32_t get_msp(void);
-void set_msp(volatile uint32_t);
-uint32_t get_sp(void);
+unsigned get_psp(void);
+void set_psp(volatile unsigned);
+unsigned get_msp(void);
+void set_msp(volatile unsigned);
+unsigned get_sp(void);
 
 void volatile save_registers(void);
 void volatile restore_registers(void);
@@ -65,11 +63,12 @@ struct StackFrame
 	uint32_t psr;
 };
 
-struct PCB {
+struct TCB {
 
-	uint32_t psp;
-	uint32_t pid;
-	uint32_t priority;
+	unsigned psp;
+	unsigned pid;
+	unsigned priority;
+	unsigned blocked;
 	int mqid;
 
 	/* Top of the entire process stack
@@ -78,13 +77,13 @@ struct PCB {
 	 */
 	uint32_t *p_stktop;
 
-	struct PCB *next;
-	struct PCB *prev;
+	struct TCB *next;
+	struct TCB *prev;
 }; 
 
-void reg_proc(void (*)(),uint32_t,uint32_t);
+void reg_task(void (*)(),unsigned,unsigned);
 void print_str(char *);
 void print_ch(char);
-void print_list(void);
+void put_ch(char, unsigned, unsigned);
 
 #endif /* PROCESS_H_ */

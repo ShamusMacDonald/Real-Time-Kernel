@@ -11,14 +11,20 @@
  *      subsequent calls are from processes during execution.
  */
 
+#include <kTaskSupport.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "process.h"
-#include "KernelCalls.h"
-#include "messaging.h"
+#include "kTask.h"
+#include "tkCalls.h"
+#include "kMessaging.h"
+#include "kPendSV.h"
 
 #define TRUE    1
 #define FALSE   0
+
+#define LOW_PR  1
+#define HIGH_PR 5
+
 #define PRIVATE static
 
 // Forward declared SVC funcs
@@ -28,13 +34,14 @@ void SVCHandler(struct StackFrame *);
 // Forward declared kernel funcs
 PRIVATE void k_kill(void);
 PRIVATE int k_getpr(void);
+PRIVATE int k_nice(int);
 
 // User defined clock initialization
 extern void InitClock(void);
 
 // Currently running process
-extern struct PCB *g_running[PRI_LVLS];
-extern uint32_t g_priority;
+extern struct TCB *g_running[PRI_LVLS];
+extern unsigned g_priority;
 
 void SVCall(void)
 {
@@ -94,6 +101,8 @@ void SVCHandler(struct StackFrame *p_procstk)
      */
     static int firstSVCcall = TRUE;
     struct KernelCallArgs *p_kernargs;
+    struct tkmsg *msg_args;
+    struct PrintCup *p_cup;
 
     if (firstSVCcall)
     {
@@ -109,11 +118,15 @@ void SVCHandler(struct StackFrame *p_procstk)
        should be increased by 8 * sizeof(unsigned int).
      * sp is increased because the stack runs from low to high memory.
     */
-        set_psp(g_running[g_priority]->psp + 8 * sizeof(uint32_t));
+        set_psp(g_running[g_priority]->psp + 8 * sizeof(unsigned));
 
         firstSVCcall = FALSE;
-        /* Start SysTick */
+
+        // Set interrupt priorities
+        init_priorities();
+        // Start SysTick
         InitClock();
+
         // init msg passing
         init_msg();
 
@@ -138,6 +151,10 @@ void SVCHandler(struct StackFrame *p_procstk)
          * to get the address and store it in p_kernargs, it is simply a matter of
            assigning the value of R7 (arptr -> r7) to kcaptr
          */
+
+        // save running psp in case task blocks
+        g_running[g_priority]->psp = get_psp();
+
         p_kernargs = (struct KernelCallArgs *)p_procstk->r7;
 
         switch(p_kernargs->code) {
@@ -151,18 +168,46 @@ void SVCHandler(struct StackFrame *p_procstk)
             break;
 
         case BIND:
-            p_kernargs->rtnval = k_bind(p_kernargs->arg1,TRUE);
+            p_kernargs->rtnval = k_bind( *((int *)p_kernargs->args), TRUE);
             break;
 
         case SEND:
-            p_kernargs->rtnval = k_send(p_kernargs->arg3               // dst
-                                      , g_running[g_priority]->mqid    // src
-                                      , (void *)p_kernargs->arg1       // data
-                                      , p_kernargs->arg2 );            // size
+
+            msg_args = (struct tkmsg *)p_kernargs->args;
+
+            p_kernargs->rtnval = k_send(msg_args->node                  // dst
+                                      , g_running[g_priority]->mqid     // src
+                                      , msg_args->data                  // data
+                                      , msg_args->size   );             // size
+
+            break;
+
+        case RECV:
+
+            msg_args = (struct tkmsg *)p_kernargs->args;
+
+            p_kernargs->rtnval = k_recv(g_running[g_priority]->mqid     // dst
+                                      , (unsigned *)msg_args->node      // src
+                                      , msg_args->data                  // data
+                                      , msg_args->size   );             // size
+
             break;
 
         case GETPR:
             p_kernargs->rtnval = k_getpr();
+            break;
+
+        case NICE:
+
+            p_kernargs->rtnval = k_nice( *((int *)p_kernargs->args) );
+
+            break;
+
+        case PRINT_CUP:
+            p_cup = (struct PrintCup *)p_kernargs->args;
+
+            p_kernargs->rtnval = k_printcup(p_cup->data, p_cup->row, p_cup->col);
+
             break;
 
         default:
@@ -170,6 +215,8 @@ void SVCHandler(struct StackFrame *p_procstk)
             break;
         }
     }
+
+    set_psp(g_running[g_priority]->psp);
 
 }
 
@@ -181,7 +228,7 @@ void SVCHandler(struct StackFrame *p_procstk)
  */
 void k_kill(void)
 {
-    struct PCB *temp;
+    struct TCB *temp;
 
     // free task stack
     free(g_running[g_priority]->p_stktop);
@@ -215,8 +262,6 @@ void k_kill(void)
     // free old pcb
     free(temp);
 
-    // Load new psp
-    set_psp(g_running[g_priority]->psp);
     // Return to SVCall restores state
 
 }
@@ -225,6 +270,34 @@ int k_getpr(void)
 {
     return g_running[g_priority]->priority;
 
+}
+
+int k_nice(int newpr)
+{
+    struct TCB* temp;
+
+    // verify valid priority
+    if( (newpr < LOW_PR) || (newpr > HIGH_PR) ) {
+        return -1;
+    }
+
+    // same priority, do nothing
+    if(newpr == g_priority) {
+
+        return g_running[g_priority]->priority;
+
+    }
+
+    // remove from current priority queue
+    temp = rmv_task();
+
+    // update pcb priority
+    temp->priority = newpr;
+
+    // add to new priority queue
+    enq_task(temp);
+
+    return temp->priority;
 }
 
 

@@ -28,6 +28,7 @@
 #define MAX_WAIT           0x1000000    // 2^24 = 16,777,216
 #define ONE_SECOND         0x0F42400    // 16,000,000
 #define TENTH_SEC          0x0186A00    // 1,600,000
+#define HUNDREDTH_SEC      0x0027100    // 160,000
 
 // Entry points
 void SysTickHandler(void);
